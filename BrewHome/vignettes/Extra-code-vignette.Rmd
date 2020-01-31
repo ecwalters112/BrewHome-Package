@@ -1,0 +1,148 @@
+---
+title: "Extra Code Used to Create Main Dataset in Package"
+author: "Liz Parish"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Extra Code Used to Create Main Dataset in Package}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+This document will show, but not run, the code used to create the main dataset `brewery_sales_rentals` used in the package. If you would like to run the code, remove "eval=FALSE" in the r code chunk. 
+
+
+## Setting Up and Organizing BreweryDB dataset:
+
+This is how I created a dataset called df1 using the BreweryDB sandbox API. This dataset is small since the free API only has a small amount of data, if more data needs to be used then they have pay options for APIs. This dataset created is meant to be used to later merge with Raltor.com home sale data and Zillow Rental Data. 
+
+```{r, eval=FALSE}
+
+url <- "https://sandbox-api.brewerydb.com/v2/locations/?order=order/?key=key"
+
+query_params <- list(
+  "order" = "breweryName",
+  "key"=Sys.getenv("BreweryDB_API"))  
+
+
+request <- GET(url, query = query_params)
+
+str(request, max.level = 1)
+
+char <- rawToChar(request$content)
+  
+df <- jsonlite::fromJSON(char, simplifyDataFrame = TRUE)
+  
+df1 <- as.data.frame(df)
+
+df1 <- do.call(data.frame, df1) #This helps include columns that were categorized as dataframes within the dataframe. Especially the Brewery name column, which is needed for this dataset. 
+ 
+ 
+df1 <- df1 %>%
+  rename("postal_code" = data.postalCode) #This helps with merging the datasets by zipcode later. 
+
+names(df1) <- gsub("data\\.", "", names(df1)) #Removes (.) punctuation from the column names. 
+
+df1 <- df1[ -c(1:3,66:80) ]
+
+df1 <- df1 %>%
+  select(name,streetAddress, locality, region, postal_code, latitude, longitude, openToPublic, locationTypeDisplay, brewery.name, brewery.description, brewery.established, website, phone) # Only selecting columns that are needed for the particular function.
+
+```
+
+## Realtor.com Data:
+
+This data shows home sales and value information for many different areas. This dataset had a lot more information on home sales than the Zillow sale dataset, which is why I chose this dataset for the home sales information. It did not however have information on rental prices, so I chose to use a zillow dataset for that information, as shown in the below Zillow section. This Realtor.com data is only from the month of Ocotber 2019.  
+
+
+```{r, eval=FALSE}
+home <- read.csv(file="RDC_Inventory_Core_Metrics_Zip_Current.csv")
+
+home_organized <- home %>%
+  select(postal_code, zip_name, active_listing_count, average_listing_price, total_listing_count, price_reduced_count, median_days_on_market) #selecting certain variables I would like to include. 
+
+
+home_brewery <- merge(df1, home_organized , by = "postal_code") #merging this data with the brewery data (df1) by zipcode. 
+```
+
+
+
+## Zillow Rent Data:
+
+Since the realtor data did not include rent data, I added in a third datset to inlude the typical rent prices by zipcode in the month of October 2019. This is the most recent month data from zillow and realtor.com. Merged on the zipcode variables.
+
+```{r, eval=FALSE}
+zillow <- read.csv(file="Zip_Zri_AllHomesPlusMultifamily_Summary.csv")
+```
+
+```{r, eval=FALSE}
+zillow <- zillow %>%
+  select(RegionName, Zri) %>%
+  rename("postal_code" = RegionName) 
+```
+  
+  
+## Merged Data:
+
+This is how I merged the brewery API data, which can also be retreived through the `get_brewery()` function created, and the Zillow and Realtor.com data. 
+
+
+```{r, eval=FALSE}
+brewery_sales_rentals <- merge(home_brewery, zillow, by = "postal_code")
+```
+
+
+This is a way to make the data look a bit cleaner and more organized. 
+
+```{r, eval=FALSE}
+brewery_sales_rentals <- brewery_sales_rentals %>%
+  rename("Zipcode" = postal_code) %>%
+  rename("Address"= streetAddress) %>%
+  rename("City" = locality) %>%
+  rename("State" = region) %>%
+  rename("Brewery Type" = locationTypeDisplay) %>%
+  rename("Brewery" = brewery.name) %>%
+  rename("Description" = brewery.description) %>%
+  rename("Year Established" = brewery.established) %>%
+  rename("Homes for Sale" = active_listing_count) %>%
+  rename("Average Listing Price" = average_listing_price) %>%
+  rename("Price Reduced Count" = price_reduced_count) %>%
+  rename("Median Day on Market" = median_days_on_market) %>%
+  rename("Typical Rent Price" = Zri) %>%
+  rename("Phone" = phone) %>%
+  rename("Website" = website) %>%
+  rename("Brewery Latitude" = latitude) %>%
+  rename("Brewery Longitude" = longitude) %>%
+  rename("Open to Public" = openToPublic)
+```
+
+This selects which columns I would like to inlude in the main dataset used for my functions in the package. This is meant to make the data more clean and organized. 
+
+```{r, eval=FALSE}
+brewery_sales_rentals <- brewery_sales_rentals %>%
+  select(Zipcode, Address, City, State, `Brewery Type`, Brewery, Description, `Year Established`, `Homes for Sale`, `Average Listing Price`, `Price Reduced Count`, `Median Day on Market`, `Typical Rent Price`, Phone, Website, `Brewery Latitude`, `Brewery Longitude`, `Open to Public`)
+```
+
+
+## Saving `brewery_sales_rentals`
+
+This would save the dataset created as file, which is included in the `/data` of the package. 
+
+```{r, eval=FALSE} 
+
+save(brewery_sales_rentals, file = "brewery_sales_rentals.rda")
+
+```
+
+
+## Data Information 
+
+The detailed information of the `brewery_sales_rentals` dataset variables and the sources can be found in the `/R` folder of the package. The document is titled `data.R`. 
+
+## Functions
+
+The code for each function created can be found in the different function documents of the `/R` folder in the package. These function documents will show all the code and steps in the functions to create a working function tool. The different documents are titled `USbreweriesbystate.R`, `USbreweriesdata.R`, `USbreweryhomevalues.R`, and `USbrewerymap.R`. 
+
+The details of each function can be found in the `/vignettes` file in the document titled `my-vignette.Rmd`. 
+
+

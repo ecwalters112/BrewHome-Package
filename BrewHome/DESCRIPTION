@@ -1,0 +1,27 @@
+Package: BrewHome
+Type: Package
+Title: Information about home and rental values around breweries in the U.S
+Version: 0.1.0
+Author: person("Liz", "Parish", email = "ecw2154@columbia.edu",
+      role = c("aut", "cre"))
+Maintainer: Liz Parish <ecw2154@columbia.edu>
+Description: Allows a user to search home listing prices
+    and typical rental prices around different breweries
+    in the US.
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 7.0.2.9000
+License: MIT + file LICENSES
+Suggests:
+    knitr,
+    rmarkdown,
+    testthat,
+    dpylr,
+    jsonlite
+VignetteBuilder: knitr
+Depends: R (>= 3.5.0)
+Imports: 
+    dplyr,
+    httr,
+    leaflet,
+    here
